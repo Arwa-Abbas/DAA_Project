@@ -2,9 +2,12 @@ import streamlit as st
 import matplotlib.pyplot as plt
 import numpy as np
 import time
+import math
 from backend.closest_pair import closest_pair
 from backend.closest_pair import read_points_from_file
 from backend.integer_mult import multiply_files, format_steps
+
+
 
 st.set_page_config(page_title="DAA Project", layout="wide")
 
@@ -204,79 +207,105 @@ algo_choice = st.sidebar.selectbox(
 )
 
 # ------------------- Closest Pair -------------------
-if algo_choice == "Closest Pair of Points":
-    st.header("Closest Pair of Points")
+import streamlit as st
+import matplotlib.pyplot as plt
+import time
+import math
 
-    uploaded_file = st.file_uploader(
-        "Upload a text file with points (x y per line)",
-        type=["txt"]
-    )
+# -----------------------------------------------
+# Function to calculate Euclidean distance
 
-    if uploaded_file is not None:
+def distance(p1, p2):
+    return math.dist(p1, p2)
+
+# -----------------------------
+# Closest Pair Algorithm with key steps only
+def closest_pair(points):
+    steps = []  # store major steps only
+
+    n = len(points)
+    steps.append(f"Received {n} points: {points}")
+
+    min_dist = float("inf")
+    pair = (None, None)
+
+    # Compare each pair but only record key updates
+    for i in range(n):
+        for j in range(i + 1, n):
+            d = distance(points[i], points[j])
+            if d < min_dist:
+                min_dist = d
+                pair = (points[i], points[j])
+                steps.append(f"✅ New minimum distance: {min_dist:.4f} between {pair}")
+
+    steps.append(f"Final Closest Pair: {pair} with distance = {min_dist:.4f}")
+    return min_dist, pair, steps
+
+# -----------------------------
+# Streamlit UI
+st.set_page_config(page_title="Closest Pair of Points", layout="wide")
+st.title("🧮 Closest Pair of Points Visualizer")
+
+uploaded_file = st.file_uploader(
+    "📂 Upload a text file with points (x y per line):",
+    type=["txt"]
+)
+
+if uploaded_file is not None:
+    try:
+        # Read points from file
+        file_contents = uploaded_file.read().decode("utf-8").splitlines()
+        points = []
+        first_line = file_contents[0]
         try:
-            file_contents = uploaded_file.read().decode("utf-8").splitlines()
-            points = []
-            first_line = file_contents[0]
-            try:
-                n = int(first_line)
-                for line in file_contents[1:n+1]:
+            n = int(first_line)
+            for line in file_contents[1:n+1]:
+                x, y = map(float, line.strip().split())
+                points.append((x, y))
+        except:
+            for line in file_contents:
+                if line.strip():
                     x, y = map(float, line.strip().split())
                     points.append((x, y))
-            except:
-                for line in file_contents:
-                    if line.strip():
-                        x, y = map(float, line.strip().split())
-                        points.append((x, y))
-            
-            if len(points) < 2:
-                st.warning("Need at least 2 points to compute closest pair.")
-            else:
-                start = time.perf_counter()
-                result = closest_pair(points)
-                elapsed = time.perf_counter() - start
-                d, pair = result
+        
+        if len(points) < 2:
+            st.warning("⚠️ Need at least 2 points to compute closest pair.")
+        else:
+            start = time.perf_counter()
+            d, pair, steps = closest_pair(points)
+            elapsed = time.perf_counter() - start
 
-                st.success(f"Closest pair: {pair[0]} , {pair[1]}")
-                st.info(f"Distance: {d:.6f}")
-                st.info(f"Time taken: {elapsed:.6f} seconds")
+            st.success(f"✅ Closest pair: {pair[0]} , {pair[1]}")
+            st.info(f"📏 Distance: {d:.6f}")
+            st.info(f"⏱️ Time taken: {elapsed:.6f} seconds")
 
-                xs = [p[0] for p in points]
-                ys = [p[1] for p in points]
-                fig, ax = plt.subplots(figsize=(12, 7))
-                
-                fig.patch.set_facecolor('#0f172a')
-                ax.set_facecolor('#1e293b')
-                
-                ax.scatter(xs, ys, s=100, color='#3b82f6', alpha=0.6, 
-                           edgecolors='#60a5fa', linewidth=2)
-                
-                ax.scatter([pair[0][0], pair[1][0]], [pair[0][1], pair[1][1]], 
-                           s=300, color='#ec4899', alpha=0.9,
-                           edgecolors='#f472b6', linewidth=3, zorder=5)
-                
-                ax.plot([pair[0][0], pair[1][0]], [pair[0][1], pair[1][1]], 
-                        color='#f472b6', linewidth=4, linestyle='--', alpha=0.8,
-                        solid_capstyle='round')
-   
-                ax.set_title(f"Closest distance: {d:.6f}", 
-                             color='#e0e7ff', fontsize=16, fontweight='bold', 
-                             pad=20, family='sans-serif')
-                ax.set_xlabel("X Coordinate", color='#c7d2fe', fontsize=12, 
-                              fontweight='bold', family='sans-serif')
-                ax.set_ylabel("Y Coordinate", color='#c7d2fe', fontsize=12, 
-                              fontweight='bold', family='sans-serif')
-                ax.tick_params(colors='#a5b4fc', labelsize=10)
-                ax.grid(True, alpha=0.15, linestyle='--', color='#60a5fa', linewidth=0.5)
-                
-                for spine in ax.spines.values():
-                    spine.set_color('#8b5cf6')
-                    spine.set_linewidth(2)
-                
-                plt.tight_layout()
-                st.pyplot(fig)
+            # Step-by-step display (collapsible)
+            with st.expander("🔹 Show Step-by-Step Process", expanded=False):
+                for s in steps:
+                    st.markdown(f"<div class='step-card'>{s}</div>", unsafe_allow_html=True)
 
-        except Exception as e:
-            st.error(f"Error reading file: {e}")
+            # Visualization
+            xs = [p[0] for p in points]
+            ys = [p[1] for p in points]
+
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.scatter(xs, ys, s=100, color='skyblue', edgecolor='black', label="Points")
+            ax.scatter([pair[0][0], pair[1][0]], [pair[0][1], pair[1][1]], 
+                       s=200, color='red', label='Closest Pair')
+            ax.plot([pair[0][0], pair[1][0]], [pair[0][1], pair[1][1]], 
+                    color='red', linestyle='--', linewidth=2)
+            ax.legend()
+            ax.set_xlabel("X Coordinate")
+            ax.set_ylabel("Y Coordinate")
+            ax.set_title(f"Closest Pair Visualization (Distance = {d:.4f})")
+            st.pyplot(fig)
+
+    except Exception as e:
+        st.error(f"Error reading file: {e}")
+
+    else:
+        st.info("⬆️ Please upload a text file to begin.")
+
 
 # ------------------- Integer Multiplication -------------------
 elif algo_choice == "Integer Multiplication":
