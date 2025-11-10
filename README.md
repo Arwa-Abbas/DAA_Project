@@ -25,7 +25,25 @@ Users can select input files via GUI or run the algorithms via command-line inte
 
 ---
 
-### Made by
-- **Arwa Abbas** — ID: 23K-0721  
-- **Mehwish Zehra** — ID: 23K-0773  
-- **Areeza** — ID: 23K-0890
+### Setup Instructions
+
+To run this project locally, follow these steps:
+
+1. **Clone or download the project folder** to your local machine.
+
+2. **Create a virtual environment** (recommended):
+   ```bash
+   python -m venv venv
+   ```
+   On Windows:
+    ```
+    venv\Scripts\activate
+    ```
+3. Install required dependencies:
+  ```bash
+  pip install -r requirements.txt
+  ```
+4. Run the application:
+  ```bash
+  python app.py
+  ```
