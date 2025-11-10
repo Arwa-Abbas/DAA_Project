@@ -17,45 +17,87 @@ def read_numbers_from_file(path):
                     print(f"Skipping non-integer line {i}: {line}")
     return nums
 
-def multiply_with_steps(a, b):
-    """Return final product and list of partial products (like manual multiplication)"""
-    a_str, b_str = str(a), str(b)
-    partials = []
-    b_rev = b_str[::-1]
+def karatsuba_multiply(x, y):
+    """divide-and-conquer multiplication algorithm"""
+    # Base case: if numbers are small enough, use regular multiplication
+    if x < 10 or y < 10:
+        return x * y, [(x, y, x * y, "Base case")]
+    
+    # Calculate the size of the numbers
+    n = max(len(str(x)), len(str(y)))
+    m = n // 2
+    
+    # Split the digit sequences in the middle
+    high1, low1 = x // (10**m), x % (10**m)
+    high2, low2 = y // (10**m), y % (10**m)
+    
+    # Recursive steps
+    z0, steps0 = karatsuba_multiply(low1, low2)
+    z1, steps1 = karatsuba_multiply((low1 + high1), (low2 + high2))
+    z2, steps2 = karatsuba_multiply(high1, high2)
+    
+    # Combine the results
+    result = z2 * (10**(2*m)) + (z1 - z2 - z0) * (10**m) + z0
+    
+    # Collect all steps for visualization
+    all_steps = steps0 + steps1 + steps2
+    all_steps.append((x, y, result, f"Combine: z2*10^{2*m} + (z1-z2-z0)*10^{m} + z0"))
+    
+    return result, all_steps
 
-    for i, digit in enumerate(b_rev):
-        partial = int(digit) * a * (10**i)
-        partials.append(partial)
-    final = sum(partials)
-    return final, partials
+def multiply_with_steps(a, b):
+    """Return final product and list of partial products using divide-and-conquer"""
+    final, all_steps = karatsuba_multiply(a, b)
+    
+    # Filter to show only the main recursive calls (not base cases unless they're interesting)
+    partials_info = []
+    for step in all_steps:
+        x, y, product, description = step
+        # Only include steps where at least one number has more than 1 digit
+        if description != "Base case" or (x >= 10 or y >= 10):
+            partials_info.append({
+                'x': x,
+                'y': y, 
+                'product': product,
+                'description': description
+            })
+    
+    return final, partials_info
 
 def format_steps(a, b, final, partials):
-    """Return string showing step-by-step multiplication"""
-    lines = [f"Multiplying {a} x {b}:"]
-
-    b_str = str(b)
-    for i, p in enumerate(partials):
-        lines.append(f"{a} x {b_str[-(i+1)]} (shift {i}) = {p}")
-
+    """Return string showing step-by-step multiplication using divide-and-conquer"""
+    lines = [f"Multiplying {a} × {b} using Divide-and-Conquer:"]
     lines.append(f"Final Product: {final}")
-    lines.append("-" * 30)
+    lines.append("")
+    lines.append("Recursive Steps:")
+    lines.append("-" * 50)
+    
+    for i, step in enumerate(partials):
+        desc = step['description']
+        if desc == "Base case":
+            lines.append(f"Step {i+1}: {step['x']} × {step['y']} = {step['product']} (Base Case)")
+        else:
+            lines.append(f"Step {i+1}: {step['x']} × {step['y']} = {step['product']}")
+            lines.append(f"       {desc}")
+    
+    lines.append("-" * 50)
     return "\n".join(lines)
 
 def show_results_gui(results, elapsed):
     win = tk.Toplevel()
-    win.title("Multiplication Steps")
-    win.geometry("600x500")
+    win.title("Multiplication Steps - Divide & Conquer")
+    win.geometry("700x600")
 
     scrollbar = tk.Scrollbar(win)
     scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-    text = tk.Text(win, wrap=tk.NONE, yscrollcommand=scrollbar.set)
+    text = tk.Text(win, wrap=tk.NONE, yscrollcommand=scrollbar.set, font=("Courier", 10))
     text.pack(expand=True, fill=tk.BOTH)
     scrollbar.config(command=text.yview)
 
     # Display all multiplication steps
     for a, b, final, partials in results:
-        text.insert(tk.END, format_steps(a, b, final, partials) + "\n")
+        text.insert(tk.END, format_steps(a, b, final, partials) + "\n\n")
 
     text.insert(tk.END, f"\nTotal time: {elapsed:.6f}s\n")
 
@@ -64,23 +106,22 @@ def show_results_gui(results, elapsed):
     products = [final for _, _, final, _ in results]
     num_bars = len(labels)
 
-    # Figure size dynamically
     fig_width = max(8, num_bars * 0.6)
     fig_height = 6
     fig, ax = plt.subplots(figsize=(fig_width, fig_height))
 
-    # Bar spacing
+ 
     x_pos = np.arange(num_bars)
     bar_width = 0.6 if num_bars <= 15 else max(0.3, 12/num_bars)
 
-    bars = ax.bar(x_pos, products, width=bar_width, color='skyblue',
-                  edgecolor='navy', alpha=0.7, linewidth=1)
+    bars = ax.bar(x_pos, products, width=bar_width, color='lightgreen',
+                  edgecolor='darkgreen', alpha=0.7, linewidth=1)
 
-    # X-axis labels properly spaced and rotated
+    # X-axis labels 
     ax.set_xticks(x_pos)
-    ax.set_xticklabels(labels, rotation=90, ha='right', fontsize=2)  # smaller font
+    ax.set_xticklabels(labels, rotation=90, ha='right', fontsize=8)
     ax.set_ylabel("Product (A*B)", fontsize=12, fontweight='bold')
-    ax.set_title("Integer Multiplication Results", fontsize=14, fontweight='bold', pad=20)
+    ax.set_title("Integer Multiplication Results (Divide & Conquer)", fontsize=14, fontweight='bold', pad=20)
     ax.grid(axis='y', alpha=0.15, linestyle='--', linewidth=0.5)
 
     # Add value labels if few bars
@@ -109,10 +150,10 @@ def multiply_files(file1, file2):
     elapsed = time.perf_counter() - start
     return results, elapsed
 
-# CLI + GUI main
+
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="Step-by-step Integer Multiplication")
+    parser = argparse.ArgumentParser(description="Step-by-step Integer Multiplication using Divide & Conquer")
     parser.add_argument('--file1', help='first input file path', default=None)
     parser.add_argument('--file2', help='second input file path', default=None)
     parser.add_argument('--gui', action='store_true', help='open GUI')
@@ -120,8 +161,8 @@ if __name__ == "__main__":
 
     if args.gui:
         root = tk.Tk()
-        root.title("Integer Multiplication")
-        root.geometry("400x120")
+        root.title("Integer Multiplication - Divide & Conquer")
+        root.geometry("450x120")
 
         def open_and_run():
             path1 = filedialog.askopenfilename(title="Select first input file",
@@ -138,7 +179,7 @@ if __name__ == "__main__":
                 return
             show_results_gui(results, elapsed)
 
-        btn = tk.Button(root, text="Choose two files and multiply", command=open_and_run)
+        btn = tk.Button(root, text="Choose two files and multiply (Divide & Conquer)", command=open_and_run)
         btn.pack(pady=30)
         root.mainloop()
     else:

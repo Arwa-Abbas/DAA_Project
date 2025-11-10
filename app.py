@@ -2,13 +2,11 @@ import streamlit as st
 import matplotlib.pyplot as plt
 import numpy as np
 import time
-from backend.closest_pair import closest_pair
-from backend.closest_pair import read_points_from_file
-from backend.integer_mult import multiply_files, format_steps
+import math
 
 st.set_page_config(page_title="DAA Project", layout="wide")
 
-# Enhanced CSS with animations
+# CSS with animations
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
@@ -17,7 +15,6 @@ st.markdown("""
         font-family: 'Inter', sans-serif;
     }
     
-    /* Animated gradient background with purple-blue theme */
     .stApp {
         background: linear-gradient(-45deg, #1a0b2e, #2d1b69, #1e3a8a, #3730a3);
         background-size: 400% 400%;
@@ -30,7 +27,6 @@ st.markdown("""
         100% { background-position: 0% 50%; }
     }
     
-    /* Floating particles effect */
     .stApp::before {
         content: '';
         position: fixed;
@@ -52,7 +48,6 @@ st.markdown("""
         50% { opacity: 0.6; transform: translateY(-20px); }
     }
     
-    /* Title with neon glow */
     h1 {
         color: #ffffff !important;
         text-align: center;
@@ -65,11 +60,7 @@ st.markdown("""
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
-        animation: neonGlow 3s ease-in-out infinite,
-                   gradientShift 4s ease infinite,
-                   fadeInDown 1s ease-out;
-        text-shadow: 0 0 30px rgba(96, 165, 250, 0.5),
-                     0 0 60px rgba(167, 139, 250, 0.3);
+        animation: neonGlow 3s ease-in-out infinite, gradientShift 4s ease infinite;
         margin-bottom: 2rem !important;
     }
     
@@ -89,11 +80,6 @@ st.markdown("""
         100% { background-position: 200% center; }
     }
     
-    @keyframes fadeInDown {
-        from { opacity: 0; transform: translateY(-50px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    
     h2 {
         color: #e0e7ff !important;
         font-weight: 700 !important;
@@ -103,25 +89,15 @@ st.markdown("""
         backdrop-filter: blur(10px);
         border-radius: 15px;
         border: 1px solid rgba(96, 165, 250, 0.2);
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3),
-                    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-        animation: slideInRight 0.8s ease-out;
         margin: 1.5rem 0 !important;
-    }
-    
-    @keyframes slideInRight {
-        from { opacity: 0; transform: translateX(50px); }
-        to { opacity: 1; transform: translateX(0); }
     }
     
     [data-testid="stSidebar"] {
         background: rgba(30, 27, 75, 0.7) !important;
         backdrop-filter: blur(30px) saturate(180%);
         border-right: 2px solid rgba(139, 92, 246, 0.3);
-        box-shadow: 8px 0 40px rgba(0, 0, 0, 0.5);
     }
     
-    /* Step card animation */
     .step-card {
         background: rgba(59, 130, 246, 0.1);
         backdrop-filter: blur(10px);
@@ -145,7 +121,6 @@ st.markdown("""
         to { opacity: 1; transform: translateY(0); }
     }
     
-    /* Result box */
     .result-box {
         background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(167, 139, 250, 0.15));
         backdrop-filter: blur(15px);
@@ -153,31 +128,8 @@ st.markdown("""
         border: 2px solid rgba(96, 165, 250, 0.4);
         padding: 1.5rem;
         margin: 1rem 0;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
-        animation: fadeIn 0.8s ease-out;
     }
     
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-    
-    /* Loading spinner */
-    .loading-spinner {
-        display: inline-block;
-        width: 20px;
-        height: 20px;
-        border: 3px solid rgba(96, 165, 250, 0.3);
-        border-radius: 50%;
-        border-top-color: #60a5fa;
-        animation: spin 1s linear infinite;
-    }
-    
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-    
-    /* Pagination button */
     .stButton button {
         background: linear-gradient(135deg, #3b82f6, #8b5cf6) !important;
         color: white !important;
@@ -197,28 +149,180 @@ st.markdown("""
 
 st.title("Divide & Conquer Algorithms")
 
-# Sidebar for algorithm selection
+# Sidebar
 algo_choice = st.sidebar.selectbox(
     "Select Algorithm",
     ["Closest Pair of Points", "Integer Multiplication"]
 )
 
-# ------------------- Closest Pair -------------------
+# Helper Functions
+def distance(p1, p2):
+    return math.dist(p1, p2)
+
+def brute_force_closest(points, steps=None):
+    """Brute force for small sets (base case)"""
+    min_dist = float("inf")
+    pair = (None, None)
+    n = len(points)
+    
+    if steps is not None:
+        steps.append(f"  Base case: Brute force on {n} points")
+    
+    for i in range(n):
+        for j in range(i + 1, n):
+            d = distance(points[i], points[j])
+            if d < min_dist:
+                min_dist = d
+                pair = (points[i], points[j])
+                if steps is not None:
+                    steps.append(f"    New min: {min_dist:.4f} between {points[i]} and {points[j]}")
+    
+    if steps is not None:
+        steps.append(f"  ✓ Base case result: distance = {min_dist:.4f}")
+    return min_dist, pair
+
+def closest_pair_recursive(px, py, depth=0, steps=None):
+    """Recursive divide and conquer closest pair"""
+    indent = "  " * depth
+    n = len(px)
+    
+    
+    # Base case
+    if n <= 3:
+        return brute_force_closest(px, steps)
+    
+    # DIVIDE: Split into left and right halves
+    mid = n // 2
+    mid_x = px[mid][0]
+    
+    if steps is not None:
+        steps.append(f"{indent}DIVIDE: Splitting at x = {mid_x:.2f}")
+        steps.append(f"{indent}   Left: {len(px[:mid])} points, Right: {len(px[mid:])} points")
+    
+    Qx = px[:mid]  # Left half
+    Rx = px[mid:]  # Right half
+    
+    # Create y-sorted lists for left and right
+    Qy = [p for p in py if p[0] <= mid_x]
+    Ry = [p for p in py if p[0] > mid_x]
+    
+    # CONQUER: Recursive calls
+    if steps is not None:
+        steps.append(f"{indent}CONQUER: Solving left half recursively")
+    left_min, left_pair = closest_pair_recursive(Qx, Qy, depth + 1, steps)
+    
+    if steps is not None:
+        steps.append(f"{indent} CONQUER: Solving right half recursively")
+    right_min, right_pair = closest_pair_recursive(Rx, Ry, depth + 1, steps)
+    
+    # Find minimum from left and right
+    if left_min < right_min:
+        min_dist = left_min
+        min_pair = left_pair
+        if steps is not None:
+            steps.append(f"{indent}   Left result is better: {left_min:.4f}")
+    else:
+        min_dist = right_min
+        min_pair = right_pair
+        if steps is not None:
+            steps.append(f"{indent}   Right result is better: {right_min:.4f}")
+    
+    # COMBINE: Check strip around midline
+    if steps is not None:
+        steps.append(f"{indent}COMBINE: Checking strip ±{min_dist:.4f} around x={mid_x:.2f}")
+    
+    strip = [p for p in py if abs(p[0] - mid_x) < min_dist]
+    strip_len = len(strip)
+    
+    if steps is not None:
+        steps.append(f"{indent}   Strip contains {strip_len} points")
+    
+    # Check points in strip (only need to check next 7 points)
+    strip_improved = False
+    for i in range(strip_len):
+        j = i + 1
+        while j < strip_len and (strip[j][1] - strip[i][1]) < min_dist:
+            d = distance(strip[i], strip[j])
+            if d < min_dist:
+                min_dist = d
+                min_pair = (strip[i], strip[j])
+                strip_improved = True
+                if steps is not None:
+                    steps.append(f"{indent}   NEW CLOSEST in strip: {strip[i]} ↔ {strip[j]}")
+                    steps.append(f"{indent}   New distance: {min_dist:.4f}")
+            j += 1
+    
+    if steps is not None:
+        if strip_improved:
+            steps.append(f"{indent}Strip improved the result!")
+        else:
+            steps.append(f"{indent}   Strip didn't improve result")
+        steps.append(f"{indent}Level {depth} complete: min_dist = {min_dist:.4f}")
+    
+    return min_dist, min_pair
+
+def closest_pair(points):
+    """Main divide and conquer closest pair algorithm"""
+    steps = []
+    n = len(points)
+    
+    if n < 2:
+        return None, None, ["Need at least 2 points"]
+    
+    steps.append(f" Starting Divide & Conquer Closest Pair")
+    steps.append(f"   Total points: {n}")
+    steps.append(f"   Time Complexity: O(n log n)")
+    
+    # Pre-sort points by x and y coordinates
+    steps.append("   Sorting points by x-coordinate...")
+    px = sorted(points, key=lambda p: (p[0], p[1]))
+    
+    steps.append("   Sorting points by y-coordinate...")
+    py = sorted(points, key=lambda p: (p[1], p[0]))
+    
+    steps.append("   Beginning recursive divide & conquer...")
+    steps.append("=" * 50)
+    
+    min_dist, min_pair = closest_pair_recursive(px, py, 0, steps)
+    
+    steps.append("=" * 50)
+    steps.append(f"   Closest Pair: {min_pair[0]} ↔ {min_pair[1]}")
+    steps.append(f"   Minimum Distance: {min_dist:.6f}")
+    
+    return min_dist, min_pair, steps
+
+
+
+def multiply_simple(a, b):
+    steps = []
+    b_str = str(b)
+    partials = []
+    
+    for i, digit in enumerate(reversed(b_str)):
+        partial = a * int(digit) * (10 ** i)
+        partials.append(partial)
+        steps.append(f"{a} × {digit} (shift {i}) = {partial:,}")
+    
+    final = sum(partials)
+    return final, partials, steps
+
+# ================= CLOSEST PAIR =================
 if algo_choice == "Closest Pair of Points":
-    st.header("Closest Pair of Points")
-
+    st.header("Closest Pair of Points Visualizer")
+    
     uploaded_file = st.file_uploader(
-        "Upload a text file with points (x y per line)",
-        type=["txt"]
+        "Upload a text file with points (x y per line):",
+        type=["txt"],
+        key="closest_pair_file"
     )
-
+    
     if uploaded_file is not None:
         try:
             file_contents = uploaded_file.read().decode("utf-8").splitlines()
             points = []
-            first_line = file_contents[0]
+            
             try:
-                n = int(first_line)
+                n = int(file_contents[0])
                 for line in file_contents[1:n+1]:
                     x, y = map(float, line.strip().split())
                     points.append((x, y))
@@ -229,195 +333,409 @@ if algo_choice == "Closest Pair of Points":
                         points.append((x, y))
             
             if len(points) < 2:
-                st.warning("Need at least 2 points to compute closest pair.")
+                st.warning("Need at least 2 points")
             else:
-                start = time.perf_counter()
-                result = closest_pair(points)
-                elapsed = time.perf_counter() - start
-                d, pair = result
-
-                st.success(f"Closest pair: {pair[0]} , {pair[1]}")
-                st.info(f"Distance: {d:.6f}")
-                st.info(f"Time taken: {elapsed:.6f} seconds")
-
-                xs = [p[0] for p in points]
-                ys = [p[1] for p in points]
-                fig, ax = plt.subplots(figsize=(12, 7))
+                # Initialize session state for closest pair
+                if 'cp_steps' not in st.session_state:
+                    st.session_state.cp_steps = None
+                if 'cp_current_step' not in st.session_state:
+                    st.session_state.cp_current_step = 0
+                if 'cp_auto_play' not in st.session_state:
+                    st.session_state.cp_auto_play = False
+                if 'cp_result' not in st.session_state:
+                    st.session_state.cp_result = None
                 
-                fig.patch.set_facecolor('#0f172a')
-                ax.set_facecolor('#1e293b')
+                # Controls
+                col1, col2, col3 = st.columns([2, 2, 2])
+                with col1:
+                    if st.button("Run Algorithm", key="run_cp"):
+                        start = time.perf_counter()
+                        d, pair, steps = closest_pair(points)
+                        elapsed = time.perf_counter() - start
+                        st.session_state.cp_steps = steps
+                        st.session_state.cp_result = (d, pair, elapsed, points)
+                        st.session_state.cp_current_step = 0
+                        st.rerun()
                 
-                ax.scatter(xs, ys, s=100, color='#3b82f6', alpha=0.6, 
-                           edgecolors='#60a5fa', linewidth=2)
+                with col2:
+                    animation_speed = st.select_slider(
+                        "Animation Speed",
+                        options=["Slow", "Medium", "Fast"],
+                        value="Medium",
+                        key="cp_speed"
+                    )
                 
-                ax.scatter([pair[0][0], pair[1][0]], [pair[0][1], pair[1][1]], 
-                           s=300, color='#ec4899', alpha=0.9,
-                           edgecolors='#f472b6', linewidth=3, zorder=5)
+                with col3:
+                    if st.session_state.cp_steps:
+                        if st.button("▶️ Auto Play" if not st.session_state.cp_auto_play else "⏸️ Pause"):
+                            st.session_state.cp_auto_play = not st.session_state.cp_auto_play
+                            st.rerun()
                 
-                ax.plot([pair[0][0], pair[1][0]], [pair[0][1], pair[1][1]], 
-                        color='#f472b6', linewidth=4, linestyle='--', alpha=0.8,
-                        solid_capstyle='round')
-   
-                ax.set_title(f"Closest distance: {d:.6f}", 
-                             color='#e0e7ff', fontsize=16, fontweight='bold', 
-                             pad=20, family='sans-serif')
-                ax.set_xlabel("X Coordinate", color='#c7d2fe', fontsize=12, 
-                              fontweight='bold', family='sans-serif')
-                ax.set_ylabel("Y Coordinate", color='#c7d2fe', fontsize=12, 
-                              fontweight='bold', family='sans-serif')
-                ax.tick_params(colors='#a5b4fc', labelsize=10)
-                ax.grid(True, alpha=0.15, linestyle='--', color='#60a5fa', linewidth=0.5)
+                speed_map = {"Slow": 1.0, "Medium": 0.5, "Fast": 0.2}
+                delay = speed_map[animation_speed]
                 
-                for spine in ax.spines.values():
-                    spine.set_color('#8b5cf6')
-                    spine.set_linewidth(2)
-                
-                plt.tight_layout()
-                st.pyplot(fig)
-
+                if st.session_state.cp_result:
+                    d, pair, elapsed, pts = st.session_state.cp_result
+                    
+                    # Results
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Closest Distance", f"{d:.6f}")
+                    with col2:
+                        st.metric("Pair", f"{pair[0]} ↔ {pair[1]}")
+                    with col3:
+                        st.metric(" Time", f"{elapsed:.6f}s")
+                    
+                    st.markdown("---")
+                    
+                    # Two column layout
+                    left_col, right_col = st.columns([1, 1])
+                    
+                    with left_col:
+                        st.subheader("Step-by-Step Process")
+                        
+                        if st.session_state.cp_steps:
+                            total_steps = len(st.session_state.cp_steps)
+                            
+                            # Navigation
+                            nav_col1, nav_col2, nav_col3, nav_col4, nav_col5 = st.columns([1, 1, 2, 1, 1])
+                            
+                            with nav_col1:
+                                if st.button("⏮️ First", key="cp_first", disabled=(st.session_state.cp_current_step == 0)):
+                                    st.session_state.cp_current_step = 0
+                                    st.rerun()
+                            
+                            with nav_col2:
+                                if st.button("◀️ Prev", key="cp_prev", disabled=(st.session_state.cp_current_step == 0)):
+                                    st.session_state.cp_current_step -= 1
+                                    st.rerun()
+                            
+                            with nav_col3:
+                                st.markdown(f"<div style='text-align: center; color: #e0e7ff; padding: 0.5rem;'>Step {st.session_state.cp_current_step + 1} of {total_steps}</div>", unsafe_allow_html=True)
+                            
+                            with nav_col4:
+                                if st.button("Next ▶️", key="cp_next", disabled=(st.session_state.cp_current_step >= total_steps - 1)):
+                                    st.session_state.cp_current_step += 1
+                                    st.rerun()
+                            
+                            with nav_col5:
+                                if st.button("Last ⏭️", key="cp_last", disabled=(st.session_state.cp_current_step >= total_steps - 1)):
+                                    st.session_state.cp_current_step = total_steps - 1
+                                    st.rerun()
+                            
+                            # Display current step
+                            current_step = st.session_state.cp_steps[st.session_state.cp_current_step]
+                            st.markdown(
+                                f"<div class='step-card'>{current_step}</div>",
+                                unsafe_allow_html=True
+                            )
+                            
+                            # Auto-play logic
+                            if st.session_state.cp_auto_play and st.session_state.cp_current_step < total_steps - 1:
+                                time.sleep(delay)
+                                st.session_state.cp_current_step += 1
+                                st.rerun()
+                            elif st.session_state.cp_auto_play and st.session_state.cp_current_step >= total_steps - 1:
+                                st.session_state.cp_auto_play = False
+                    
+                    with right_col:
+                        st.subheader("Visualization")
+                        
+                        # Create figure
+                        fig, ax = plt.subplots(figsize=(10, 8))
+                        fig.patch.set_facecolor('#0f172a')
+                        ax.set_facecolor('#1e293b')
+                        
+                        xs = [p[0] for p in pts]
+                        ys = [p[1] for p in pts]
+                        
+                        # Plot all points
+                        ax.scatter(xs, ys, s=200, c='skyblue', edgecolor='#3b82f6', 
+                                  linewidth=2, alpha=0.8, label="All Points", zorder=3)
+                        
+                        # Highlight closest pair
+                        ax.scatter([pair[0][0], pair[1][0]], [pair[0][1], pair[1][1]], 
+                                  s=350, c='red', edgecolor='#f472b6', 
+                                  linewidth=3, label='Closest Pair', zorder=4)
+                        
+                        # Draw line
+                        ax.plot([pair[0][0], pair[1][0]], [pair[0][1], pair[1][1]], 
+                               'r--', linewidth=3, alpha=0.8, zorder=2)
+                        
+                        # Add distance label
+                        mid_x = (pair[0][0] + pair[1][0]) / 2
+                        mid_y = (pair[0][1] + pair[1][1]) / 2
+                        ax.text(mid_x, mid_y, f'd = {d:.4f}', 
+                               fontsize=14, color='yellow', fontweight='bold',
+                               bbox=dict(boxstyle='round,pad=0.5', facecolor='#1e293b', 
+                                        edgecolor='yellow', linewidth=2),
+                               ha='center', va='bottom')
+                        
+                        ax.legend(fontsize=11, facecolor='#1e293b', edgecolor='#8b5cf6', 
+                                 labelcolor='white')
+                        ax.set_xlabel("X Coordinate", color='white', fontsize=12, fontweight='bold')
+                        ax.set_ylabel("Y Coordinate", color='white', fontsize=12, fontweight='bold')
+                        ax.set_title(f"Closest Pair Visualization (Distance = {d:.4f})", 
+                                    color='white', fontsize=14, fontweight='bold', pad=15)
+                        ax.tick_params(colors='white')
+                        ax.grid(True, alpha=0.3, linestyle='--', color='#60a5fa')
+                        
+                        for spine in ax.spines.values():
+                            spine.set_color('#8b5cf6')
+                            spine.set_linewidth(2)
+                        
+                        plt.tight_layout()
+                        st.pyplot(fig)
+        
         except Exception as e:
-            st.error(f"Error reading file: {e}")
+            st.error(f"Error: {e}")
+    else:
+        st.info("⬆Please upload a text file to begin")
 
-# ------------------- Integer Multiplication -------------------
+# ================= INTEGER MULTIPLICATION =================
 elif algo_choice == "Integer Multiplication":
-    st.header("Integer Multiplication (Step-by-Step)")
+    st.header("Integer Multiplication Visualizer - Divide & Conquer")
+    
+    # Divide and Conquer multiplication functions
+    def karatsuba_multiply(x, y, depth=0):
+        """Karatsuba divide-and-conquer multiplication algorithm"""
+        steps = []
+        indent = "  " * depth
+        
+        # Base case: if numbers are small enough, use regular multiplication
+        if x < 10 or y < 10:
+            result = x * y
+            steps.append(f"{indent}Base case: {x} × {y} = {result}")
+            return result, steps
+        
+        # Calculate the size of the numbers
+        n = max(len(str(x)), len(str(y)))
+        m = n // 2
+        
+        # Split the digit sequences in the middle
+        high1, low1 = x // (10**m), x % (10**m)
+        high2, low2 = y // (10**m), y % (10**m)
+        
+        steps.append(f"{indent}Splitting: {x} = {high1}×10^{m} + {low1}")
+        steps.append(f"{indent}Splitting: {y} = {high2}×10^{m} + {low2}")
+        
+        # Recursive steps
+        steps.append(f"{indent}Computing z0 = {low1} × {low2}")
+        z0, steps0 = karatsuba_multiply(low1, low2, depth + 1)
+        
+        steps.append(f"{indent}Computing z1 = ({low1} + {high1}) × ({low2} + {high2})")
+        z1, steps1 = karatsuba_multiply((low1 + high1), (low2 + high2), depth + 1)
+        
+        steps.append(f"{indent}Computing z2 = {high1} × {high2}")
+        z2, steps2 = karatsuba_multiply(high1, high2, depth + 1)
+        
+        # Combine the results
+        result = z2 * (10**(2*m)) + (z1 - z2 - z0) * (10**m) + z0
+        
+        steps.extend(steps0)
+        steps.extend(steps1)
+        steps.extend(steps2)
+        
+        steps.append(f"{indent}Combining: z2×10^{2*m} + (z1-z2-z0)×10^{m} + z0")
+        steps.append(f"{indent}Combining: {z2}×10^{2*m} + ({z1}-{z2}-{z0})×10^{m} + {z0}")
+        steps.append(f"{indent}Final result: {result}")
+        
+        return result, steps
 
-    file1 = st.file_uploader("Upload first file with integers (one per line)", type=["txt"], key="file1")
-    file2 = st.file_uploader("Upload second file with integers (one per line)", type=["txt"], key="file2")
+    def multiply_with_steps(a, b):
+        """Return final product and steps using divide-and-conquer"""
+        final, all_steps = karatsuba_multiply(a, b)
+        
+        # Format steps for display
+        formatted_steps = []
+        for step in all_steps:
+            formatted_steps.append(step)
+        
+        return final, formatted_steps
 
+    file1 = st.file_uploader("Upload first file (integers, one per line)", 
+                             type=["txt"], key="file1")
+    file2 = st.file_uploader("Upload second file (integers, one per line)", 
+                             type=["txt"], key="file2")
+    
     if file1 and file2:
         try:
-            # Save uploaded files temporarily
-            with open("temp_file1.txt", "wb") as f:
-                f.write(file1.getbuffer())
-            with open("temp_file2.txt", "wb") as f:
-                f.write(file2.getbuffer())
-
-            # Processing indicator
-            with st.spinner('🔄 Processing multiplications...'):
-                results, elapsed = multiply_files("temp_file1.txt", "temp_file2.txt")
-
-            # Initialize session state for pagination
-            if 'current_page' not in st.session_state:
-                st.session_state.current_page = 0
-            if 'items_per_page' not in st.session_state:
-                st.session_state.items_per_page = 10
-
+            # Read files
+            numbers1 = [int(line.strip()) for line in file1.read().decode("utf-8").splitlines() if line.strip()]
+            numbers2 = [int(line.strip()) for line in file2.read().decode("utf-8").splitlines() if line.strip()]
+            
+            # Process multiplications
+            results = []
+            start = time.perf_counter()
+            for a, b in zip(numbers1, numbers2):
+                final, steps = multiply_with_steps(a, b)
+                results.append((a, b, final, steps))
+            elapsed = time.perf_counter() - start
+            
+            # Session state
+            if 'mult_current_idx' not in st.session_state:
+                st.session_state.mult_current_idx = 0
+            if 'mult_current_step' not in st.session_state:
+                st.session_state.mult_current_step = 0
+            if 'mult_auto_play' not in st.session_state:
+                st.session_state.mult_auto_play = False
+            
             total_items = len(results)
-            total_pages = (total_items + st.session_state.items_per_page - 1) // st.session_state.items_per_page
-
+            
             # Control panel
-            col1, col2, col3 = st.columns([2, 3, 2])
+            col1, col2, col3 = st.columns([2, 2, 2])
             
             with col1:
                 st.metric("Total Multiplications", total_items)
             with col2:
                 st.metric("Total Time", f"{elapsed:.6f}s")
             with col3:
-                items_per_page = st.selectbox(
-                    "Items per page:",
-                    [5, 10, 20, 50, 100],
-                    index=1,
-                    key="items_select"
+                animation_speed = st.select_slider(
+                    "Speed",
+                    options=["Slow", "Medium", "Fast"],
+                    value="Medium",
+                    key="mult_speed"
                 )
-                st.session_state.items_per_page = items_per_page
-
-            # Recalculate pages if items_per_page changed
-            total_pages = (total_items + st.session_state.items_per_page - 1) // st.session_state.items_per_page
-            if st.session_state.current_page >= total_pages:
-                st.session_state.current_page = 0
-
+            
+            speed_map = {"Slow": 0.8, "Medium": 0.4, "Fast": 0.2}
+            step_delay = speed_map[animation_speed]
+            
             st.markdown("---")
-
+            
             # Two column layout
             left_col, right_col = st.columns([1, 1])
-
+            
             with left_col:
-                st.subheader("Multiplication Steps")
+                st.subheader("Divide & Conquer Steps")
                 
-                # Pagination controls
-                nav_col1, nav_col2, nav_col3, nav_col4, nav_col5 = st.columns([1, 1, 2, 1, 1])
+                # Navigation for which multiplication
+                nav_col1, nav_col2, nav_col3, nav_col4, nav_col5, nav_col6 = st.columns([1, 1, 2, 1, 1, 1])
                 
                 with nav_col1:
-                    if st.button("⏮️ First", disabled=(st.session_state.current_page == 0)):
-                        st.session_state.current_page = 0
+                    if st.button("⏮️ First", key="mult_first", disabled=(st.session_state.mult_current_idx == 0)):
+                        st.session_state.mult_current_idx = 0
+                        st.session_state.mult_current_step = 0
                         st.rerun()
                 
                 with nav_col2:
-                    if st.button("◀️ Prev", disabled=(st.session_state.current_page == 0)):
-                        st.session_state.current_page -= 1
+                    if st.button("◀️ Prev", key="mult_prev_mult", disabled=(st.session_state.mult_current_idx == 0)):
+                        st.session_state.mult_current_idx -= 1
+                        st.session_state.mult_current_step = 0
                         st.rerun()
                 
                 with nav_col3:
-                    st.markdown(f"<div style='text-align: center; color: #e0e7ff; padding: 0.5rem;'>Page {st.session_state.current_page + 1} of {total_pages}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='text-align: center; color: #e0e7ff; padding: 0.5rem;'>Multiplication {st.session_state.mult_current_idx + 1} of {total_items}</div>", unsafe_allow_html=True)
                 
                 with nav_col4:
-                    if st.button("Next ▶️", disabled=(st.session_state.current_page >= total_pages - 1)):
-                        st.session_state.current_page += 1
+                    if st.button("Next ▶️", key="mult_next_mult", disabled=(st.session_state.mult_current_idx >= total_items - 1)):
+                        st.session_state.mult_current_idx += 1
+                        st.session_state.mult_current_step = 0
                         st.rerun()
                 
                 with nav_col5:
-                    if st.button("Last ⏭️", disabled=(st.session_state.current_page >= total_pages - 1)):
-                        st.session_state.current_page = total_pages - 1
+                    if st.button("Last ⏭️", key="mult_last", disabled=(st.session_state.mult_current_idx >= total_items - 1)):
+                        st.session_state.mult_current_idx = total_items - 1
+                        st.session_state.mult_current_step = 0
                         st.rerun()
-
-                # Display steps for current page with animation delay
-                start_idx = st.session_state.current_page * st.session_state.items_per_page
-                end_idx = min(start_idx + st.session_state.items_per_page, total_items)
                 
-                step_container = st.container()
-                with step_container:
-                    for idx in range(start_idx, end_idx):
-                        a, b, final, partials = results[idx]
-                        
-                        # Animated step card
-                        st.markdown(f"""
-                        <div class="step-card" style="animation-delay: {(idx - start_idx) * 0.1}s;">
-                            <h4 style="color: #60a5fa; margin: 0 0 0.5rem 0;">
-                                #{idx + 1}: {a} × {b}
-                            </h4>
-                            <div style="color: #c7d2fe; font-size: 0.9rem; line-height: 1.6;">
-                        """, unsafe_allow_html=True)
-                        
-                        b_str = str(b)
-                        for i, p in enumerate(partials):
-                            st.markdown(f"<div style='margin-left: 1rem;'>→ {a} × {b_str[-(i+1)]} (shift {i}) = {p:,}</div>", unsafe_allow_html=True)
-                        
-                        st.markdown(f"""
-                            </div>
-                            <div style="margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px solid rgba(96, 165, 250, 0.3);">
-                                <strong style="color: #ec4899; font-size: 1.1rem;">Final Product: {final:,}</strong>
-                            </div>
+                with nav_col6:
+                    if st.button("▶️ Auto Play" if not st.session_state.mult_auto_play else "⏸️ Pause"):
+                        st.session_state.mult_auto_play = not st.session_state.mult_auto_play
+                        st.rerun()
+                
+                # Current multiplication
+                idx = st.session_state.mult_current_idx
+                a, b, final, steps = results[idx]
+                
+                st.markdown(f"""
+                <div class="step-card">
+                    <h4 style="color: #60a5fa; margin: 0 0 1rem 0;">
+                        #{idx + 1}: {a:,} × {b:,} = {final:,}
+                    </h4>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Step navigation within current multiplication
+                total_steps = len(steps) + 1  # +1 for final summary
+                
+                step_nav1, step_nav2, step_nav3, step_nav4, step_nav5 = st.columns([1, 1, 2, 1, 1])
+                
+                with step_nav1:
+                    if st.button("⏮️", key="step_first", disabled=(st.session_state.mult_current_step == 0)):
+                        st.session_state.mult_current_step = 0
+                        st.rerun()
+                
+                with step_nav2:
+                    if st.button("◀️", key="step_prev", disabled=(st.session_state.mult_current_step == 0)):
+                        st.session_state.mult_current_step -= 1
+                        st.rerun()
+                
+                with step_nav3:
+                    st.markdown(f"<div style='text-align: center; color: #e0e7ff; padding: 0.5rem;'>Step {st.session_state.mult_current_step + 1} of {total_steps}</div>", unsafe_allow_html=True)
+                
+                with step_nav4:
+                    if st.button("▶️", key="step_next", disabled=(st.session_state.mult_current_step >= total_steps - 1)):
+                        st.session_state.mult_current_step += 1
+                        st.rerun()
+                
+                with step_nav5:
+                    if st.button("⏭️", key="step_last", disabled=(st.session_state.mult_current_step >= total_steps - 1)):
+                        st.session_state.mult_current_step = total_steps - 1
+                        st.rerun()
+                
+                # Display current step
+                if st.session_state.mult_current_step < len(steps):
+                    step_text = steps[st.session_state.mult_current_step]
+                    # Add syntax highlighting for different types of steps
+                    if "Base case" in step_text:
+                        color = "#10b981"  # Green for base cases
+                    elif "Splitting" in step_text:
+                        color = "#f59e0b"  # Yellow for splitting
+                    elif "Computing" in step_text:
+                        color = "#3b82f6"  # Blue for recursive calls
+                    elif "Combining" in step_text:
+                        color = "#ec4899"  # Pink for combining
+                    else:
+                        color = "#c7d2fe"  # Default
+                    
+                    st.markdown(f"""
+                    <div class="step-card">
+                        <div style="color: {color}; font-family: 'Courier New', monospace; font-size: 0.95rem; line-height: 1.6;">
+                            {step_text}
                         </div>
-                        """, unsafe_allow_html=True)
-                        
-                        # Small delay for animation effect
-                        time.sleep(0.05)
-
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    # Final summary
+                    st.markdown(f"""
+                    <div class="step-card">
+                        <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(96, 165, 250, 0.3);">
+                            <strong style="color: #ec4899; font-size: 1.2rem;">✓ Multiplication Complete!</strong><br>
+                            <strong style="color: #10b981; font-size: 1.1rem;">Final Product: {final:,}</strong>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Auto-play logic
+                if st.session_state.mult_auto_play:
+                    time.sleep(step_delay)
+                    if st.session_state.mult_current_step < total_steps - 1:
+                        st.session_state.mult_current_step += 1
+                        st.rerun()
+                    elif st.session_state.mult_current_idx < total_items - 1:
+                        st.session_state.mult_current_idx += 1
+                        st.session_state.mult_current_step = 0
+                        st.rerun()
+                    else:
+                        st.session_state.mult_auto_play = False
+                        st.rerun()
+            
             with right_col:
-                st.subheader("Results Overview")
+                st.subheader("Algorithm Analysis")
                 
-                # Quick jump to result
+                # Statistics
                 st.markdown("<div class='result-box'>", unsafe_allow_html=True)
-                st.write("**Quick Jump to Result:**")
-                jump_to = st.number_input(
-                    "Enter result number (1-" + str(total_items) + "):",
-                    min_value=1,
-                    max_value=total_items,
-                    value=start_idx + 1,
-                    step=1
-                )
-                
-                if st.button("Go to Result"):
-                    target_page = (jump_to - 1) // st.session_state.items_per_page
-                    st.session_state.current_page = target_page
-                    st.rerun()
-                
-                st.markdown("</div>", unsafe_allow_html=True)
-                
-                # Summary statistics
-                st.markdown("<div class='result-box'>", unsafe_allow_html=True)
-                st.write("**Summary Statistics:**")
+                st.write("**Statistics:**")
                 products = [final for _, _, final, _ in results]
                 col_a, col_b = st.columns(2)
                 with col_a:
@@ -427,52 +745,62 @@ elif algo_choice == "Integer Multiplication":
                     st.metric("Average", f"{np.mean(products):,.0f}")
                     st.metric("Median", f"{np.median(products):,.0f}")
                 st.markdown("</div>", unsafe_allow_html=True)
+              
                 
-                # Enhanced visualization
+                # Visualization
                 st.markdown("<div class='result-box'>", unsafe_allow_html=True)
-                st.write("**Product Distribution:**")
-                
-                labels = [f"{a}×{b}" for a, b, _, _ in results]
-                products = [final for _, _, final, _ in results]
+                st.write("**Performance Analysis:**")
                 
                 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10))
-                
-                # Bar chart with gradient
                 fig.patch.set_facecolor('#0f172a')
+                
+                # Plot 1: Product values
                 ax1.set_facecolor('#1e293b')
+                indices = range(1, len(results) + 1)
+                products = [final for _, _, final, _ in results]
                 
-                colors = plt.cm.viridis(np.linspace(0.3, 0.9, len(products)))
-                bars = ax1.bar(np.arange(len(labels)), products, color=colors, 
-                              edgecolor='#60a5fa', alpha=0.8, linewidth=1.5)
+                bars = ax1.bar(indices, products, color='#60a5fa', alpha=0.8, 
+                              edgecolor='#3b82f6', linewidth=1.5)
                 
-                ax1.set_xticks(np.arange(len(labels)))
-                ax1.set_xticklabels(labels, rotation=90, ha='right', fontsize=8, color='#c7d2fe')
-                ax1.set_ylabel("Product Value", color='#c7d2fe', fontsize=12, fontweight='bold')
-                ax1.set_title("All Multiplication Results", color='#e0e7ff', fontsize=14, fontweight='bold', pad=15)
-                ax1.tick_params(colors='#a5b4fc', labelsize=9)
-                ax1.grid(axis='y', alpha=0.2, linestyle='--', color='#60a5fa')
+                # Highlight current multiplication
+                if results:
+                    current_idx = st.session_state.mult_current_idx
+                    bars[current_idx].set_color('#ec4899')
+                    bars[current_idx].set_edgecolor('#f472b6')
+                    bars[current_idx].set_linewidth(3)
                 
-                for spine in ax1.spines.values():
-                    spine.set_color('#8b5cf6')
-                    spine.set_linewidth(2)
+                ax1.set_xlabel("Multiplication #", color='white', fontsize=12, fontweight='bold')
+                ax1.set_ylabel("Product Value", color='white', fontsize=12, fontweight='bold')
+                ax1.set_title("Multiplication Results", color='white', fontsize=14, fontweight='bold', pad=15)
+                ax1.tick_params(colors='white', labelsize=10)
+                ax1.grid(axis='y', alpha=0.3, linestyle='--', color='#60a5fa')
                 
-                # Histogram
+                # Plot 2: Histogram
                 ax2.set_facecolor('#1e293b')
-                ax2.hist(products, bins=min(20, len(products)//2 or 1), 
-                        color='#ec4899', alpha=0.7, edgecolor='#f472b6', linewidth=2)
-                ax2.set_xlabel("Product Value", color='#c7d2fe', fontsize=12, fontweight='bold')
-                ax2.set_ylabel("Frequency", color='#c7d2fe', fontsize=12, fontweight='bold')
-                ax2.set_title("Product Distribution", color='#e0e7ff', fontsize=14, fontweight='bold', pad=15)
-                ax2.tick_params(colors='#a5b4fc', labelsize=9)
-                ax2.grid(axis='both', alpha=0.2, linestyle='--', color='#60a5fa')
+                if len(products) > 1:
+                    n, bins, patches = ax2.hist(products, bins=min(15, len(products)//2 or 1), 
+                            color='#10b981', alpha=0.8, edgecolor='white', linewidth=1.5)
+                    
+                    # Color gradient
+                    for i, patch in enumerate(patches):
+                        patch.set_facecolor(plt.cm.viridis(i / len(patches)))
                 
-                for spine in ax2.spines.values():
-                    spine.set_color('#8b5cf6')
-                    spine.set_linewidth(2)
+                ax2.set_xlabel("Product Value", color='white', fontsize=12, fontweight='bold')
+                ax2.set_ylabel("Frequency", color='white', fontsize=12, fontweight='bold')
+                ax2.set_title("Product Distribution", color='white', fontsize=14, fontweight='bold', pad=15)
+                ax2.tick_params(colors='white', labelsize=10)
+                ax2.grid(axis='both', alpha=0.3, linestyle='--', color='#60a5fa')
+                
+                for ax in [ax1, ax2]:
+                    for spine in ax.spines.values():
+                        spine.set_color('#8b5cf6')
+                        spine.set_linewidth(2)
                 
                 plt.tight_layout()
                 st.pyplot(fig)
                 st.markdown("</div>", unsafe_allow_html=True)
-
+        
         except Exception as e:
-            st.error(f"Error processing files: {e}")
+            st.error(f"Error: {e}")
+    else:
+        st.info("⬆Please upload both files to begin")
