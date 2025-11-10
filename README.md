@@ -19,6 +19,8 @@ Users can select input files via GUI or run the algorithms via command-line inte
 - Handles large datasets (input size = 100).
 
 ---
+##APP LINK: https://divide-and-conquer-algorithms.streamlit.app/
+---
 
 ## Made by: 
 - ID: 23K-0721 ARWA ABBAS
