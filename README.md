@@ -16,7 +16,7 @@ Users can select input files via GUI or run the algorithms via command-line inte
 - Interactive GUI for file selection and visualization.  
 - Step-by-step display of multiplication results.  
 - Dynamic plots for results using **Matplotlib**.  
-- Handles large datasets (input size = 100).
+- Handles large datasets (input size > 100).
 
 ---
 
